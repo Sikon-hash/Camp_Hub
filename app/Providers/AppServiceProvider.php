@@ -7,10 +7,15 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
-use App\Models\Order;
-use App\Observers\LedgerObserver;
-use App\Observers\OrderObserver;
 
+// Models
+use App\Models\Order;
+use App\Models\Product;
+
+// Observers
+use App\Observers\LedgerObserver;
+use App\Observers\ProductObserver;
+use App\Observers\OrderObserver; // Jika dipakai
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,20 +31,26 @@ class AppServiceProvider extends ServiceProvider
      * Bootstrap any application services.
      */
     public function boot(): void
-{
-    Paginator::useBootstrap();
+    {
+        // 1. Setup Pagination (Supaya tampilan halaman rapi)
+        Paginator::useBootstrap();
 
-    Order::observe(LedgerObserver::class);
+        // 2. Setup Observer (Mata-mata Blockchain/Ledger)
+        // Pastikan model yang diamati sesuai dengan Observer-nya
+        Order::observe(LedgerObserver::class);
+        Product::observe(ProductObserver::class);
 
-    // KAMU HARUS MEMANGGIL FUNGSI INI AGAR DIJALANKAN
-    $this->configureRateLimiting(); 
-}
+        // 3. Setup Rate Limiting (Keamanan Brute Force)
+        $this->configureRateLimiting();
+    }
 
-protected function configureRateLimiting()
-{
-    RateLimiter::for('login', function (Request $request) {
-        // Catatan: Gunakan perMinute (tanpa 's') jika ingin per menit
-        return Limit::perMinute(5)->by($request->ip());
-    });
-}
+    /**
+     * Konfigurasi Rate Limiter kustom
+     */
+    protected function configureRateLimiting()
+    {
+        RateLimiter::for('login', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
+    }
 }

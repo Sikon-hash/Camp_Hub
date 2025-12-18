@@ -2,116 +2,90 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\BlockchainIntegrityController;
 use App\Http\Controllers\HomeController;
-
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PostController;
 
-route::get('/', [HomeController::class,'home']);
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application.
+|
+*/
 
-route::get('/dashboard', [HomeController::class,'login_home'])
-->middleware(['auth', 'verified'])->name('dashboard');;
+// --- PUBLIC ROUTES (Bisa diakses siapa saja) ---
+Route::get('/', [HomeController::class, 'home']);
+Route::get('product_details/{id}', [HomeController::class, 'product_details']);
 
-Route::get('/admin/blockchain/verify', [
-    BlockchainIntegrityController::class,
-    'index'
-])->middleware('auth');
+// --- AUTHENTICATED USER ROUTES (Harus Login & Verified) ---
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Dashboard User
+    Route::get('/dashboard', [HomeController::class, 'login_home'])->name('dashboard');
 
-// Rute untuk pengguna dengan peran 'admin'
-Route::group(['middleware' => ['role:admin']], function () {
-    Route::get('/admin', [AdminController::class, 'index']);
+    // Cart System (Menggunakan HomeController)
+    Route::controller(HomeController::class)->group(function () {
+        Route::get('add_cart/{id}', 'add_cart');
+        Route::get('mycart', 'mycart');
+        Route::get('delete_cart/{id}', 'delete_cart');
+        Route::post('confirm_order', 'confirm_order');
+    });
+
+    // Profile Settings
+    Route::controller(ProfileController::class)->group(function () {
+        Route::get('/profile', 'edit')->name('profile.edit');
+        Route::patch('/profile', 'update')->name('profile.update');
+        Route::delete('/profile', 'destroy')->name('profile.destroy');
+    });
 });
 
-// Rute untuk pengguna dengan izin 'create posts' (menggunakan 'can' middleware)
-Route::group(['middleware' => ['can:create posts']], function () {
-    Route::post('/posts', [PostController::class, 'store']);
+// --- ADMIN ROUTES (ZONA KHUSUS INVESTIGATOR & ADMIN) ---
+// Middleware: Harus Login (auth) DAN bertipe Admin (admin)
+Route::middleware(['auth', 'admin'])->group(function () {
+
+    // 1. Admin Dashboard (Menggunakan HomeController sesuai kode asli Anda)
+    Route::get('admin/dashboard', [HomeController::class, 'index']);
+
+    // 2. Semua Logika Admin (Menggunakan AdminController)
+    Route::controller(AdminController::class)->group(function () {
+        
+        // === BLOCKCHAIN & SECURITY DASHBOARD (RUTE BARU) ===
+        Route::get('/system_health', 'system_health')->name('system.health');
+
+        // === CATEGORY MANAGEMENT ===
+        Route::get('view_category', 'view_category');
+        Route::post('add_category', 'add_category');
+        Route::get('delete_category/{id}', 'delete_category');
+        Route::get('edit_category/{id}', 'edit_category');
+        Route::post('update_category/{id}', 'update_category');
+
+        // === PRODUCT MANAGEMENT ===
+        Route::get('add_product', 'add_product');
+        Route::post('upload_product', 'upload_product');
+        Route::get('view_product', 'view_product');
+        Route::get('update_product/{id}', 'update_product');
+        Route::post('edit_product/{id}', 'edit_product');
+        Route::get('product_search', 'product_search');
+        Route::get('delete_product/{id}', 'delete_product'); // Soft Delete biasa
+
+        // === TRASH & RESTORE SYSTEM (SEKARANG SUDAH AMAN) ===
+        // Sebelumnya ini di luar middleware, sangat berbahaya. Sekarang aman.
+        Route::get('/trashed_products', 'trashed_products')->name('trashed_products');
+        Route::get('/restore_product/{id}', 'restore_product')->name('restore_product');
+        Route::get('/force_delete_product/{id}', 'force_delete_product')->name('force_delete_product');
+
+        // === ORDER MANAGEMENT ===
+        Route::get('view_orders', 'view_order');
+        Route::get('on_the_way/{id}', 'on_the_way');
+        Route::get('delivered/{id}', 'delivered');
+    });
 });
 
-Route::middleware(['SessionTimeout'])->group(function () {
-    // route kamu di sini
-});
-// Rute untuk pengguna yang memiliki izin 'create posts' menggunakan 'permission' middleware
+// --- OPTIONAL / ADVANCED PERMISSIONS (Spatie) ---
+// Bagian ini disimpan jika Anda menggunakan package spatie/laravel-permission
 Route::middleware(['auth', 'permission:create posts'])->group(function () {
-    // Rute untuk membuat postingan
     Route::post('/posts', [PostController::class, 'store']);
-});
-
-
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 require __DIR__.'/auth.php';
-
-
-route::get('admin/dashboard', [HomeController::class, 'index'])->
-middleware(['auth', 'admin']);
-
-
-route::get('view_category', [AdminController::class, 'view_category'])->
-middleware(['auth', 'admin']);
-
-route::post('add_category', [AdminController::class, 'add_category'])->
-middleware(['auth', 'admin']);
-
-route::get('delete_category/{id}', [AdminController::class, 'delete_category'])->
-middleware(['auth', 'admin']);
-
-route::get('edit_category/{id}', [AdminController::class, 'edit_category'])->
-middleware(['auth', 'admin']);
-
-route::post('update_category/{id}', [AdminController::class, 'update_category'])->
-middleware(['auth', 'admin']);
-
-route::get('add_product', [AdminController::class, 'add_product'])->
-middleware(['auth', 'admin']);
-
-route::post('upload_product', [AdminController::class, 'upload_product'])->
-middleware(['auth', 'admin']);
-
-route::get('view_product', [AdminController::class, 'view_product'])->
-middleware(['auth', 'admin']);
-
-route::get('delete_product/{id}', [AdminController::class, 'delete_product'])->
-middleware(['auth', 'admin']);
-
-route::get('update_product/{id}', [AdminController::class, 'update_product'])->
-middleware(['auth', 'admin']);
-
-route::post('edit_product/{id}', [AdminController::class, 'edit_product'])->
-middleware(['auth', 'admin']);
-
-route::get('product_search', [AdminController::class, 'product_search'])->
-middleware(['auth', 'admin']);
-
-route::get('product_details/{id}', [HomeController::class, 'product_details']);
-
-route::get('add_cart/{id}', [HomeController::class, 'add_cart'])->
-middleware(['auth', 'verified']);
-
-route::get('mycart', [HomeController::class, 'mycart'])->
-middleware(['auth', 'verified']);
-
-route::get('delete_cart/{id}', [HomeController::class, 'delete_cart'])->
-middleware(['auth', 'verified']);
-
-route::post('confirm_order', [HomeController::class, 'confirm_order'])->
-middleware(['auth', 'verified']);
-
-route::get('view_orders', [AdminController::class, 'view_order'])->
-middleware(['auth', 'admin']);
-
-route::get('on_the_way/{id}', [AdminController::class, 'on_the_way'])->
-middleware(['auth', 'admin']);
-
-route::get('delivered/{id}', [AdminController::class, 'delivered'])->
-middleware(['auth', 'admin']);
-
-
-Route::get('/trashed_products', [AdminController::class, 'trashed_products'])->name('trashed_products');
-Route::get('/restore_product/{id}', [AdminController::class, 'restore_product'])->name('restore_product');
-Route::get('/force_delete_product/{id}', [AdminController::class, 'force_delete_product'])->name('force_delete_product');
